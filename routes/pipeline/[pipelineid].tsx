@@ -1,4 +1,5 @@
 import { Handlers, PageProps } from "$fresh/server.ts";
+import { GitLabHost, GitLabKey } from "../../constants.ts";
 import { Pipeline, Rail } from "../../models.ts";
 
 export const handler: Handlers<Rail<Pipeline>> = {
@@ -12,8 +13,8 @@ export const handler: Handlers<Rail<Pipeline>> = {
     }
     const projectId = Number.parseInt(_projectId);
     const projectResp = await fetch(
-      `https://gitlab.com/api/v4/projects/${projectId}`,
-      { headers: { "PRIVATE-TOKEN": "your-awesome-token" } },
+      `${GitLabHost}/api/v4/projects/${projectId}`,
+      { headers: { "PRIVATE-TOKEN": GitLabKey } },
     );
 
     if (projectResp.status === 404) {
