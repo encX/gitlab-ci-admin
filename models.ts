@@ -27,6 +27,7 @@ export interface Job {
   duration: number;
   queued_duration: number;
   pipeline: Pipeline;
+  web_url: string;
 }
 
 export interface Rail<T> {
