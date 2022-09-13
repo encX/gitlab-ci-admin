@@ -1,10 +1,11 @@
 import { Handlers, PageProps } from "$fresh/server.ts";
 import { GitLabHost, GitLabKey } from "../../constants.ts";
-import { Pipeline, Project, Rail } from "../../models.ts";
+import { Job, Pipeline, Project, Rail } from "../../models.ts";
 
 interface ProjectPageVM {
   project: Project;
   pipelines: Pipeline[];
+  jobs: Job[];
 }
 
 export const handler: Handlers<Rail<ProjectPageVM>> = {
@@ -40,10 +41,6 @@ export const handler: Handlers<Rail<ProjectPageVM>> = {
       { headers: { "PRIVATE-TOKEN": GitLabKey } },
     );
 
-    if (pipelinesResp.status === 404) {
-      return ctx.render({ err: new Error("Project not found"), result: null });
-    }
-
     if (pipelinesResp.status !== 200) {
       return ctx.render({
         err: new Error(
@@ -52,9 +49,24 @@ export const handler: Handlers<Rail<ProjectPageVM>> = {
         result: null,
       });
     }
+
+    const jobsResp = await fetch(
+      `${GitLabHost}/api/v4/projects/${projectId}/jobs`,
+      { headers: { "PRIVATE-TOKEN": GitLabKey } },
+    );
+
+    if (jobsResp.status !== 200) {
+      return ctx.render({
+        err: new Error(
+          `Gitlab returned status ${jobsResp.status};`,
+        ),
+        result: null,
+      });
+    }
     const project: Project = await projectResp.json();
     const pipelines: Pipeline[] = await pipelinesResp.json();
-    return ctx.render({ result: { project, pipelines } });
+    const jobs: Job[] = await jobsResp.json();
+    return ctx.render({ result: { project, pipelines, jobs } });
   },
 };
 
@@ -65,7 +77,8 @@ export default function ProjectPage({ data }: PageProps<Rail<ProjectPageVM>>) {
   // if project not found return 404 page
   // else fetch pipeline from project and render rows
   if (data.err) return <div>{data.err.message}</div>;
-  const { project, pipelines } = data.result!;
+  const { project, pipelines, jobs } = data.result!;
+
   const pipelinesList = () =>
     pipelines.map((p) => (
       <p>
@@ -73,11 +86,21 @@ export default function ProjectPage({ data }: PageProps<Rail<ProjectPageVM>>) {
         <a href={p.web_url}>View</a>
       </p>
     ));
+
+  const jobsList = () =>
+    jobs.map((j) => (
+      <p>
+        ID: {j.id} Pipeline: {j.pipeline.iid} Queued: {j.queued_duration}{" "}
+        Duration: {j.duration} <a href={j.web_url}>View</a>
+      </p>
+    ));
+
   return (
     <div class="p-4 mx-auto max-w-screen-md">
       Project page where it infinite-load pipelines for project{" "}
       <a href={project.web_url} className="font-bold">{project.name}</a>
-      {pipelinesList()}
+      <div className="mt-8">{pipelinesList()}</div>
+      <div className="mt-8">{jobsList()}</div>
     </div>
   );
 }
